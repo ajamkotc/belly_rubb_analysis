@@ -10,8 +10,8 @@ notebook
 numpy
 pandas
 pip
-python-dotenv
 scikit-learn
 tqdm
 typer
+ydata-profiling
 -e .
