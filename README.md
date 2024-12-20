@@ -19,6 +19,7 @@ A short description of the project.
 │   └── raw            <- The original, immutable data dump.
 │
 ├── docs               <- A default mkdocs project; see www.mkdocs.org for details
+|   └── datatypes      <- Stores dataset datatypes as JSON files.
 │
 ├── models             <- Trained and serialized models, model predictions, or model summaries
 │
@@ -33,6 +34,7 @@ A short description of the project.
 │
 ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
 │   └── figures        <- Generated graphics and figures to be used in reporting
+|   └── profile-reports<- Generate profile-report summaries for datasets
 │
 ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
 │                         generated with `pip freeze > requirements.txt`
