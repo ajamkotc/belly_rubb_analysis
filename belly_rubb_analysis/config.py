@@ -16,9 +16,12 @@ INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
 
+DATATYPES_DIR = PROJ_ROOT / "docs" / "datatypes"
+
 MODELS_DIR = PROJ_ROOT / "models"
 
 REPORTS_DIR = PROJ_ROOT / "reports"
+PROFILE_REPORTS_DIR = REPORTS_DIR / "profile-reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 
 # If tqdm is installed, configure loguru with tqdm.write

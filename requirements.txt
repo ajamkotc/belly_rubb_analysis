@@ -5,6 +5,7 @@ isort
 jupyterlab
 loguru
 matplotlib
+missingno
 mkdocs
 notebook
 numpy

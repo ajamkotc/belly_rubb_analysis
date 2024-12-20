@@ -1,13 +1,19 @@
 {
     "Order": "string",
-    "Order Date": "datetime",
+    "Order Date": {
+        "type": "datetime",
+        "format": "%Y/%m/%d"
+    },
     "Currency": "string",
     "Order Subtotal": "float",
     "Order Shipping Price": "float",
     "Order Tax Total": "float",
     "Order Total": "float",
     "Order Refunded Amount": "float",
-    "Fulfillment Date": "datetime",
+    "Fulfillment Date": {
+        "type":  "datetime",
+        "format": "%m/%d/%Y, %I:%M %p"
+    },
     "Fulfillment Type": {
         "type": "category",
         "categories": ["Pickup", "Curbside", "Delivery", "Other"],
