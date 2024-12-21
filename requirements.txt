@@ -11,6 +11,7 @@ notebook
 numpy
 pandas
 pip
+rapidfuzz
 scikit-learn
 tqdm
 typer

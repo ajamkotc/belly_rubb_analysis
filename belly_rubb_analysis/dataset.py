@@ -3,6 +3,7 @@ import json
 import typer
 import pandas as pd
 from loguru import logger
+from rapidfuzz.distance import Levenshtein
 # from tqdm import tqdm
 
 from belly_rubb_analysis.config import PROCESSED_DATA_DIR, RAW_DATA_DIR, \
@@ -11,8 +12,7 @@ from belly_rubb_analysis.config import PROCESSED_DATA_DIR, RAW_DATA_DIR, \
 app = typer.Typer()
 
 def load_col_types(file_path: str) -> dict:
-    """
-    Load column types from JSON file
+    """Load column types from JSON file
     
     Params:
         file_path (str): Path to JSON file
@@ -24,8 +24,7 @@ def load_col_types(file_path: str) -> dict:
         return json.load(f)
 
 def load_data(file_path: str) -> pd.DataFrame:
-    """
-    Loads and returns raw data from given file_path
+    """Loads and returns raw data from given file_path
     
     Params:
         file_path (str): Path to csv file
@@ -35,8 +34,7 @@ def load_data(file_path: str) -> pd.DataFrame:
     return pd.read_csv(file_path)
 
 def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
-    """
-    Converts datatypes in df to those specified in JSON file
+    """Converts datatypes in df to those specified in JSON file
 
     Params:
         df (pd.DataFrame): Input DataFrame.
@@ -62,8 +60,7 @@ def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
     return df
 
 def drop_const_col(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Drops columns with a single constant value.
+    """Drops columns with a single constant value.
 
     In addition to dropping columns with a single constant value, it will 
     also drop columns with entirely missing data.
@@ -81,8 +78,7 @@ def drop_const_col(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def drop_high_missing(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Drops columns with more than 70% entries missing.
+    """Drops columns with more than 70% entries missing.
     
     Params:
         df (pd.DataFrame): Input DataFrame
@@ -95,8 +91,7 @@ def drop_high_missing(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Drops duplicate rows from data.
+    """Drops duplicate rows from data.
     
     Params:
         df (pd.DataFrame): Input DataFrame
@@ -106,10 +101,38 @@ def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     """
     return df.drop_duplicates()
 
+def autocorrect_col_values(df: pd.DataFrame, col: str, valid_values: list) -> pd.DataFrame:
+    """Standardizes column values.
+    
+    Params:
+        df (pd.DataFrame): Original DataFrame
+        col (str): Column to be standardized
+        valid_values (list): List of valid values to standardize to
+    
+    Returns:
+        df (pd.DataFrame): DataFrame with standardized column
+    """
+    def standardize_value(value: str) -> str:
+        """Returns valid match based on similarity
+        
+        Params:
+            value (str): Value to convert
+            
+        Returns:
+            closest_match (str): Closest match from valid_values
+        """
+        closest_match = max(valid_values, key=lambda ref: Levenshtein.similarity(value, ref.lower()))
+        
+        return closest_match
+
+    df[col] = df[col].apply(standardize_value)
+
+    return df
+
 @app.command()
 def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    input_path: Path = RAW_DATA_DIR / "orders.csv",
+    input_path: Path = RAW_DATA_DIR / "orders-2023-12-22-2024-12-20.csv",
     output_path: Path = PROCESSED_DATA_DIR / "orders_processed.csv",
     datatype_path: Path = DATATYPES_DIR / "orders_data_types.json"
     # ----------------------------------------------
@@ -146,7 +169,13 @@ def main(
     df = drop_duplicates(df)
     logger.success("Dropped duplicate rows")
 
-    output_filename = INTERIM_DATA_DIR / f"{input_path.stem}_processed.csv"
+    logger.info(f"Standardizing values in 'Channels' column from {input_path.name}")
+    valid_channel_values = ['Postmates Delivery','BELLY RUBB | BBQ Catering | Barbecue To Go and Delivery', \
+                            'DoorDash', 'Payment Links']
+    df = autocorrect_col_values(df, 'Channels', valid_channel_values)
+    logger.success("Standardized Channels values")
+
+    output_filename = INTERIM_DATA_DIR / input_path.name
     logger.info(f"Outputting processed file to {output_filename}")
     df.to_csv(output_filename, index=False)
     logger.success("Saved processed file")
