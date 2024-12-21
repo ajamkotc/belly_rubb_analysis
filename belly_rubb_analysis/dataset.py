@@ -121,8 +121,9 @@ def autocorrect_col_values(df: pd.DataFrame, col: str, valid_values: list) -> pd
         Returns:
             closest_match (str): Closest match from valid_values
         """
-        closest_match = max(valid_values, key=lambda ref: Levenshtein.similarity(value, ref.lower()))
-        
+        closest_match = max(valid_values, \
+                            key=lambda ref: Levenshtein.similarity(value, ref.lower()))
+
         return closest_match
 
     df[col] = df[col].apply(standardize_value)
@@ -170,8 +171,8 @@ def main(
     logger.success("Dropped duplicate rows")
 
     logger.info(f"Standardizing values in 'Channels' column from {input_path.name}")
-    valid_channel_values = ['Postmates Delivery','BELLY RUBB | BBQ Catering | Barbecue To Go and Delivery', \
-                            'DoorDash', 'Payment Links']
+    valid_channel_values = ['Postmates Delivery',\
+                            'BELLY RUBB | BBQ Catering | Barbecue To Go and Delivery', 'DoorDash', 'Payment Links']
     df = autocorrect_col_values(df, 'Channels', valid_channel_values)
     logger.success("Standardized Channels values")
 
