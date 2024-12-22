@@ -13,6 +13,7 @@ pandas
 pip
 rapidfuzz
 scikit-learn
+seaborn
 tqdm
 typer
 ydata-profiling

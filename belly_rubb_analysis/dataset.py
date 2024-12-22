@@ -130,6 +130,25 @@ def autocorrect_col_values(df: pd.DataFrame, col: str, valid_values: list) -> pd
 
     return df
 
+def calculate_upper_bound(df: pd.DataFrame, col: str) -> int:
+    """Calculates upper bound of boxplot.
+    
+    Can be used for detecting outliers.
+    
+    Params:
+        df (pd.DataFrame): Input DataFrame
+        col (str): Column to calculate upper bound for
+    
+    Returns:
+        upper bound (int): Integer representing upper bound
+    """
+    q3 = df[col].quantile(q=0.75)
+    q1 = df[col].quantile(q=0.25)
+
+    iqr = q3 - q1
+
+    return q3 + 1.5 * iqr
+
 @app.command()
 def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
