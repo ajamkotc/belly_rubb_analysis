@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import json
 import typer
@@ -5,9 +6,10 @@ import pandas as pd
 from loguru import logger
 from rapidfuzz.distance import Levenshtein
 # from tqdm import tqdm
+from ydata_profiling import ProfileReport
 
 from belly_rubb_analysis.config import PROCESSED_DATA_DIR, RAW_DATA_DIR, \
-    DATATYPES_DIR, INTERIM_DATA_DIR
+    DATATYPES_DIR, INTERIM_DATA_DIR, PROFILE_REPORTS_DIR
 
 app = typer.Typer()
 
@@ -149,6 +151,63 @@ def calculate_upper_bound(df: pd.DataFrame, col: str) -> int:
 
     return q3 + 1.5 * iqr
 
+def generate_profile_report(
+        df: pd.DataFrame,
+        output_file_path: str,
+        title: str = 'Profile Report') -> None:
+    """Generate Profile Report
+    
+    Params:
+        df (pd.DataFrame): DataFrame to make report from
+        output_file_path (str): Output filepath
+        title (str): Title of report
+    """
+    profile = ProfileReport(df, title)
+    profile.to_file(output_file_path)
+
+def find_similar_csv(table: str, data_dir: str = RAW_DATA_DIR) -> list:
+    """Finds csv files from same table
+    
+    Params:
+        table (str): Name of table
+        data_dir (str): Directory to look in
+    
+    Returns:
+        similar_files (list): List of all .csv files from that table"""
+    # List all files in @dir
+    files = os.listdir(path=data_dir)
+
+    similar_files = []
+
+    # Loop through files
+    for file in files:
+        # Check if file is a .csv file
+        if file.endswith('csv'):
+            # Get table name
+            table_name = file.split('-')[0]
+
+            if table_name.lower() == table.lower():
+                similar_files.append(file)
+
+    return similar_files
+
+def combine_csv_files(table: str, data_dir: str = RAW_DATA_DIR.as_posix()) -> pd.DataFrame:
+    """Combines table data from multiple csv's into one
+    
+    Params:
+        table (str): Table name to combine
+        data_dir (str): Path to data
+    
+    Returns:
+        dfs (pd.DataFrame): Combined DataFrame"""
+    # Get all csv files of that table
+    all_files = find_similar_csv(table=table, data_dir=data_dir)
+
+    # Combine data from tables into one DataFrame
+    dfs = pd.concat([pd.read_csv(data_dir + file) for file in all_files])
+
+    return dfs
+
 @app.command()
 def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
@@ -164,6 +223,9 @@ def main(
         output_path (str): Path to export processed data
         datatype_path (str): Path to JSON containing datatypes
     """
+    logger.info(f"Generating profile report of {input_path.name}")
+    generate_profile_report(input_path, PROFILE_REPORTS_DIR)
+
     logger.info(f"Loading dataset {input_path.name}")
     df = load_data(input_path)
     logger.success("Loaded dataset")
@@ -210,4 +272,5 @@ def main(
     """
 
 if __name__ == "__main__":
-    app()
+    #app()
+    print(combine_csv_files('transactions', data_dir='data/raw/'))
