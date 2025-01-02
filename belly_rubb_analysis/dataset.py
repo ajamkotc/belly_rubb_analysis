@@ -1,15 +1,17 @@
 import os
+import pdb
 from pathlib import Path
+from difflib import get_close_matches
 import json
 import typer
 import pandas as pd
 from loguru import logger
 from rapidfuzz.distance import Levenshtein
+from rapidfuzz.fuzz import ratio
 # from tqdm import tqdm
 from ydata_profiling import ProfileReport
-
 from belly_rubb_analysis.config import PROCESSED_DATA_DIR, RAW_DATA_DIR, \
-    DATATYPES_DIR, INTERIM_DATA_DIR, PROFILE_REPORTS_DIR
+    DATATYPES_DIR, INTERIM_DATA_DIR, PROFILE_REPORTS_DIR, PROJ_ROOT
 
 app = typer.Typer()
 
@@ -45,21 +47,43 @@ def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
     Returns:
         df (pd.DataFrame): Output DataFrame with correct datatypes
     """
+    # Loop through dtype dictionary
     for col, dtype in col_types.items():
+        # Verify column exists in df
         if col in df.columns:
+            # String conversion
             if dtype == 'string':
                 df[col] = df[col].astype('string')
+            # Datetime or category conversion
             elif isinstance(dtype, dict):
+                # Datetime conversion
                 if dtype['type'] == 'datetime':
-                    df[col] = pd.to_datetime(df[col], errors='raise', format=dtype['format'])
+                    df[col] = pd.to_datetime(df[col], errors='coerce', format=dtype['format'])
+                # Category conversion
                 else:
                     categories = dtype['categories']
                     ordered = dtype['ordered']
-                    df[col] = pd.Categorical(df[col], categories=categories, ordered=ordered)
+                    df[col] = pd.Categorical(values=df[col], categories=categories, ordered=ordered)
+            # Numeric conversion
             else:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
 
     return df
+
+def file_exists(file_name: str) -> bool:
+    """Checks if a file exists in the project directory.
+    
+    Params:
+        file_name (str): Name of file to search for
+        
+    Returns:
+        bool: True if found, False otherwise
+    """
+    for root, _, files in os.walk(PROJ_ROOT):
+        if file_name in files:
+            return True
+
+    return False
 
 def drop_const_col(df: pd.DataFrame) -> pd.DataFrame:
     """Drops columns with a single constant value.
@@ -79,15 +103,16 @@ def drop_const_col(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def drop_high_missing(df: pd.DataFrame) -> pd.DataFrame:
-    """Drops columns with more than 70% entries missing.
+def drop_high_missing(df: pd.DataFrame, missing_ratio: float = 0.70) -> pd.DataFrame:
+    """Drops columns with a particular ratio of entries missing.
     
     Params:
         df (pd.DataFrame): Input DataFrame
+        ratio (float): Ratio of missing to non-missing values
     
     Returns:
-        df (pd.DataFrame): DataFrame with columns with more than 70% missing data dropped."""
-    mask = df.isna().sum() / df.shape[0] > 0.7
+        df (pd.DataFrame): DataFrame with columns missing data dropped."""
+    mask = df.isna().sum() / df.shape[0] > missing_ratio
     df = df.drop(columns=mask[mask].index, axis=1)
 
     return df
@@ -102,6 +127,33 @@ def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
         df (pd.DataFrame): DataFrame with no duplicate rows.
     """
     return df.drop_duplicates()
+
+def validate_cols(df: pd.DataFrame, col_data: dict) -> pd.DataFrame:
+    """Validate values in column.
+    
+    Params:
+        df (pd.DataFrame): Original dataframe
+        col_data (dict): Column information
+        
+    Returns:
+        df (pd.DataFrame): Processed dataframe
+    """
+    validated_df = df
+
+    # Loop through column data
+    for col, dtype in col_data.items():
+        # Validate that column exists in df
+        if col in df.columns:
+            # Col has list of valid values
+            if isinstance(dtype, dict) and ('valid_values' in dtype):
+                # Correct values in column
+                validated_df = autocorrect_col_values(
+                    df=validated_df,
+                    col=col,
+                    valid_values=dtype['valid_values']
+                )
+
+    return validated_df
 
 def autocorrect_col_values(df: pd.DataFrame, col: str, valid_values: list) -> pd.DataFrame:
     """Standardizes column values.
@@ -153,19 +205,19 @@ def calculate_upper_bound(df: pd.DataFrame, col: str) -> int:
 
 def generate_profile_report(
         df: pd.DataFrame,
-        output_file_path: str,
-        title: str = 'Profile Report') -> None:
+        filename: str,
+        output_directory: Path = PROFILE_REPORTS_DIR) -> None:
     """Generate Profile Report
     
     Params:
         df (pd.DataFrame): DataFrame to make report from
-        output_file_path (str): Output filepath
-        title (str): Title of report
+        filename (str): Name of file to save to
+        output_directory (Path): Output directory
     """
-    profile = ProfileReport(df, title)
-    profile.to_file(output_file_path)
+    profile = ProfileReport(df, title='Pandas Profiling Report')
+    profile.to_file(output_directory / filename)
 
-def find_similar_csv(table: str, data_dir: str = RAW_DATA_DIR) -> list:
+def find_similar_csv(table: str, data_dir: str = RAW_DATA_DIR.as_posix()) -> list:
     """Finds csv files from same table
     
     Params:
@@ -184,14 +236,32 @@ def find_similar_csv(table: str, data_dir: str = RAW_DATA_DIR) -> list:
         # Check if file is a .csv file
         if file.endswith('csv'):
             # Get table name
-            table_name = file.split('-')[0]
+            similarity = ratio(table, file)
+            threshold = 90
 
-            if table_name.lower() == table.lower():
+            if (similarity > threshold) or (table in file):
                 similar_files.append(file)
-
     return similar_files
 
-def combine_csv_files(table: str, data_dir: str = RAW_DATA_DIR.as_posix()) -> pd.DataFrame:
+def find_types(table_name: str, directory: Path = DATATYPES_DIR):
+    """Find .json file associated with table
+    
+    Params:
+        table_name (str): Name of table
+        directory (Path): Directory to look in
+    
+    Returns:
+        .json Path (Path): Path to matching .json file
+    """
+    # Load all .json files
+    json_files = [file.name for file in directory.glob('*.json')]
+
+    # Find files with table_name in file name or close to it
+    matching_file = get_close_matches(table_name, json_files, n=1, cutoff=0.3)[0]
+
+    return directory / matching_file
+
+def combine_csv_files(table: str, data_dir: Path = RAW_DATA_DIR) -> pd.DataFrame:
     """Combines table data from multiple csv's into one
     
     Params:
@@ -203,17 +273,17 @@ def combine_csv_files(table: str, data_dir: str = RAW_DATA_DIR.as_posix()) -> pd
     # Get all csv files of that table
     all_files = find_similar_csv(table=table, data_dir=data_dir)
 
+    print(all_files)
     # Combine data from tables into one DataFrame
-    dfs = pd.concat([pd.read_csv(data_dir + file) for file in all_files])
+    dfs = pd.concat([load_data(data_dir / file) for file in all_files])
 
     return dfs
 
 @app.command()
 def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    input_path: Path = RAW_DATA_DIR / "orders-2023-12-22-2024-12-20.csv",
-    output_path: Path = PROCESSED_DATA_DIR / "orders_processed.csv",
-    datatype_path: Path = DATATYPES_DIR / "orders_data_types.json"
+    input_path: Path = RAW_DATA_DIR / "transactions",
+    output_path: Path = PROCESSED_DATA_DIR / "orders_processed.csv"
     # ----------------------------------------------
 ):
     """Performs data cleaning.
@@ -223,54 +293,55 @@ def main(
         output_path (str): Path to export processed data
         datatype_path (str): Path to JSON containing datatypes
     """
-    logger.info(f"Generating profile report of {input_path.name}")
-    generate_profile_report(input_path, PROFILE_REPORTS_DIR)
+    # Get table name
+    table_name = input_path.stem
+    logger.info(f"Loaded table {table_name}")
 
-    logger.info(f"Loading dataset {input_path.name}")
-    df = load_data(input_path)
-    logger.success("Loaded dataset")
+    # Combine with other csv files regarding same table
+    logger.info("Combining with other related csv files")
+    df = combine_csv_files(table=table_name)
 
-    logger.info(f"Loading datatypes from {datatype_path.name}")
-    data_types = load_col_types(datatype_path)
-    logger.success("Loaded datatypes")
+    # Generate profile report if doesn't exist already
+    logger.info(f"Checking if profile report for {table_name} exists")
+    if file_exists(input_path.stem + '.html'):
+        logger.info("Report exists")
+    else:
+        logger.info(f"Report does not exist, generating report for {table_name}")
+        generate_profile_report(df=df, filename=input_path.name)
 
+    # Find .json file associated with input dataset
+    json_file = find_types(table_name=input_path.name)
+
+    # Load data from json file
+    logger.info(f"Loading datatypes from {json_file.name}")
+    data_types = load_col_types(json_file)
+
+    # Convert columns to datatypes specified in json
     logger.info(f"Converting datatypes in {input_path.name}")
     df = convert_data_types(df, data_types)
-    print(df['Order Date'].head())
-    logger.success("Converted datatypes")
 
+    # Drop columns with constant values
     logger.info(f"Dropping constant columns from {input_path.name}")
     df = drop_const_col(df)
-    logger.success("Dropped constant columns")
 
-    logger.info(f"Dropping columns with more than 70% data missing from {input_path.name}")
-    df = drop_high_missing(df)
-    logger.success("Dropped columns with high missing values")
+    # Drop columns with set amount of data missing
+    logger.info(f"Dropping columns with more than 72% data missing from {input_path.name}")
+    df = drop_high_missing(df, missing_ratio=0.72)
 
+    # Drop duplicate rows
     logger.info(f"Dropping duplicate rows from {input_path.name}")
     df = drop_duplicates(df)
-    logger.success("Dropped duplicate rows")
 
-    logger.info(f"Standardizing values in 'Channels' column from {input_path.name}")
-    valid_channel_values = ['Postmates Delivery', \
-                            'BELLY RUBB | BBQ Catering | Barbecue To Go and Delivery', \
-                            'DoorDash', 'Payment Links']
-    df = autocorrect_col_values(df, 'Channels', valid_channel_values)
-    logger.success("Standardized Channels values")
+    # Validate values in columns
+    logger.info(f"Standardizing values in {input_path.name}")
+    df = validate_cols(df=df, col_data=data_types)
 
-    output_filename = INTERIM_DATA_DIR / input_path.name
+    # Save data
+    output_filename = INTERIM_DATA_DIR / 'test.csv'
     logger.info(f"Outputting processed file to {output_filename}")
     df.to_csv(output_filename, index=False)
-    logger.success("Saved processed file")
 
-    """ ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Processing dataset...")
-    for i in tqdm(range(10), total=10):
-        
-    logger.success("Processing dataset complete.")
-    # -----------------------------------------
-    """
+    logger.success('Processing dataset complete.')
 
 if __name__ == "__main__":
-    #app()
-    print(combine_csv_files('transactions', data_dir='data/raw/'))
+    app()
