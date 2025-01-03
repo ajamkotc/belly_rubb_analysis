@@ -1,3 +1,37 @@
+"""This module provides functions for loading, processing, and analyzing datasets.
+Functions:
+    load_col_types(file_path: str) -> dict:
+        Load column types from a JSON file.
+    load_data(file_path: str) -> pd.DataFrame:
+        Load and return raw data from a given file path.
+    convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
+        Convert data types in a DataFrame to those specified in a JSON file.
+    file_exists(file_name: str) -> bool:
+        Check if a file exists in the project directory.
+    drop_const_col(df: pd.DataFrame) -> pd.DataFrame:
+        Drop columns with a single constant value or entirely missing data.
+    drop_high_missing(df: pd.DataFrame, missing_ratio: float = 0.70) -> pd.DataFrame:
+        Drop columns with a particular ratio of entries missing.
+    drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+        Drop duplicate rows from data.
+    validate_cols(df: pd.DataFrame, col_data: dict) -> pd.DataFrame:
+        Validate values in columns based on provided column data.
+    autocorrect_col_values(df: pd.DataFrame, col: str, valid_values: list) -> pd.DataFrame:
+        Standardize column values based on valid values.
+    calculate_upper_bound(df: pd.DataFrame, col: str) -> int:
+        Calculate the upper bound of a boxplot for detecting outliers.
+    generate_profile_report(df: pd.DataFrame, filename: str, output_directory: Path = PROFILE_REPORTS_DIR) -> None:
+        Generate a profile report from a DataFrame.
+    find_similar_csv(table: str, data_dir: str = RAW_DATA_DIR.as_posix()) -> list:
+        Find CSV files from the same table.
+    find_types(table_name: str, directory: Path = DATATYPES_DIR):
+        Find the JSON file associated with a table.
+    combine_csv_files(table: str, data_dir: Path = RAW_DATA_DIR) -> pd.DataFrame:
+        Combine table data from multiple CSV files into one DataFrame.
+    detect_date_col(df: pd.DataFrame, date_keywords=None) -> str:
+        Return the name of the date column in a DataFrame.
+    main(input_path: Path = RAW_DATA_DIR / "orders", output_path: Path = PROCESSED_DATA_DIR / "orders_processed.csv"):
+        Perform data cleaning and processing."""
 import os
 import pdb
 from pathlib import Path
@@ -12,6 +46,8 @@ from rapidfuzz.fuzz import ratio
 from ydata_profiling import ProfileReport
 from belly_rubb_analysis.config import PROCESSED_DATA_DIR, RAW_DATA_DIR, \
     DATATYPES_DIR, INTERIM_DATA_DIR, PROFILE_REPORTS_DIR, PROJ_ROOT
+
+DATE_KEYWORDS = ["date", "order_date", "orderDate", "Order Date", "timestamp"]
 
 app = typer.Typer()
 
@@ -37,6 +73,25 @@ def load_data(file_path: str) -> pd.DataFrame:
         DataFrame: Loaded DataFrame"""
     return pd.read_csv(file_path)
 
+def convert_dollars(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
+    """Removes $ sign from dollar amounts
+    
+    Params:
+        df (pd.DataFrame): Original dataframe
+        col_types (dict): Dictionary mapping columns to datatypes
+        
+    Returns:
+        df (pd.DataFrame): Processed dataframe
+    """
+    # Loop through col types
+    for col, dtype in col_types.items():
+        # If column exists in df and is of type dollar
+        if col in df.columns and dtype == 'dollar':
+            # Remove $ sign
+            df[col] = df[col].replace('[\$,]', '', regex=True)
+
+    return df
+
 def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
     """Converts datatypes in df to those specified in JSON file
 
@@ -47,6 +102,7 @@ def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
     Returns:
         df (pd.DataFrame): Output DataFrame with correct datatypes
     """
+    # breakpoint()
     # Loop through dtype dictionary
     for col, dtype in col_types.items():
         # Verify column exists in df
@@ -59,11 +115,22 @@ def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
                 # Datetime conversion
                 if dtype['type'] == 'datetime':
                     df[col] = pd.to_datetime(df[col], errors='coerce', format=dtype['format'])
+
+                    # Return only time if specified
+                    if dtype.get('only_time', False):
+                        df[col] = df[col].dt.time
                 # Category conversion
                 else:
                     categories = dtype['categories']
                     ordered = dtype['ordered']
                     df[col] = pd.Categorical(values=df[col], categories=categories, ordered=ordered)
+            # Dollar conversion
+            elif dtype == 'dollar':
+                try:
+                    df[col] = df[col].replace('[\$,]', '', regex=True)
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                except ValueError:
+                    df = df.drop(labels=col, axis=1)
             # Numeric conversion
             else:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -277,7 +344,32 @@ def combine_csv_files(table: str, data_dir: Path = RAW_DATA_DIR) -> pd.DataFrame
     # Combine data from tables into one DataFrame
     dfs = pd.concat([load_data(data_dir / file) for file in all_files])
 
+    # Check if there is a date column
+    date_col = detect_date_col(dfs)
+
+    if date_col:
+        # If there is a date column, sort dataframe by those values
+        dfs = dfs.sort_values(by=date_col).reset_index(drop=True)
+
     return dfs
+
+def detect_date_col(df: pd.DataFrame, date_keywords=None) -> str:
+    """Returns name of date column in dataframe
+    
+    Params:
+        df (pd.DataFrame): Original dataframe
+        date_keywords (list): List of date keywords to search for in df columns
+        
+    Returns:
+        col (str): Name of first column matching any of the date keywords
+    """
+    if date_keywords is None:
+        date_keywords = DATE_KEYWORDS
+
+    for col in df.columns:
+        for keyword in date_keywords:
+            if keyword.lower() == col.lower():
+                return col
 
 @app.command()
 def main(
@@ -293,6 +385,7 @@ def main(
         output_path (str): Path to export processed data
         datatype_path (str): Path to JSON containing datatypes
     """
+    breakpoint()
     # Get table name
     table_name = input_path.stem
     logger.info(f"Loaded table {table_name}")
@@ -302,9 +395,19 @@ def main(
     df = combine_csv_files(table=table_name)
 
     # Generate profile report if doesn't exist already
+    report_path = input_path.stem + '.html'
     logger.info(f"Checking if profile report for {table_name} exists")
-    if file_exists(input_path.stem + '.html'):
+    if file_exists(report_path):
         logger.info("Report exists")
+
+        # Prompt user if they'd like to overwrite current report
+        user_input = input("Would you like to overwrite the current report? (yes/no)")
+
+        if user_input.lower() in ('yes', 'y'):
+            logger.info('Generating profile report for {table_name}')
+            generate_profile_report(df=df,filename=input_path.name)
+        else:
+            logger.info('Skipping profile report generation')
     else:
         logger.info(f"Report does not exist, generating report for {table_name}")
         generate_profile_report(df=df, filename=input_path.name)
@@ -319,6 +422,7 @@ def main(
     # Convert columns to datatypes specified in json
     logger.info(f"Converting datatypes in {input_path.name}")
     df = convert_data_types(df, data_types)
+    print(df['Time'].head())
 
     # Drop columns with constant values
     logger.info(f"Dropping constant columns from {input_path.name}")
@@ -337,7 +441,7 @@ def main(
     df = validate_cols(df=df, col_data=data_types)
 
     # Save data
-    output_filename = INTERIM_DATA_DIR / 'test.csv'
+    output_filename = INTERIM_DATA_DIR / (input_path.stem + '_interim.csv')
     logger.info(f"Outputting processed file to {output_filename}")
     df.to_csv(output_filename, index=False)
 
