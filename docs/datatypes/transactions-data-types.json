@@ -8,54 +8,130 @@
         "format": "%H:%M:%S",
         "only_time": true
     },
-    "Time Zone": "string",
-    "Gross Sales": "dollar",
-    "Discounts": "dollar",
-    "Service Charges": "dollar",
-    "Net Sales": "dollar",
-    "Gift Card Sales": "dollar",
-    "Tax": "dollar",
-    "Tip": "dollar",
-    "Partial Refunds": "dollar",
-    "Total Collected": "dollar",
-    "Source": "string",
-    "Card": "dollar",
-    "Card Entry Methods": "string",
-    "Cash": "dollar",
-    "Square Gift Card": "dollar",
-    "Other Tender": "dollar",
-    "Other Tender Type": "string",
-    "Tender Note": "string",
-    "Fees": "dollar",
-    "Net Total": "dollar",
-    "Transaction ID": "string",
-    "Payment ID": "string",
+    "Time Zone": {
+        "type": "string"
+    },
+    "Gross Sales": {
+        "type": "dollar"
+    },
+    "Discounts": {
+        "type": "dollar"
+    },
+    "Service Charges": {
+        "type": "dollar"
+    },
+    "Net Sales": {
+        "type": "dollar"
+    },
+    "Gift Card Sales": {
+        "type": "dollar"
+    },
+    "Tax": {
+        "type": "dollar"
+    },
+    "Tip": {
+        "type": "dollar"
+    },
+    "Partial Refunds": {
+        "type": "dollar"
+    },
+    "Total Collected": {
+        "type": "dollar"
+    },
+    "Source": {
+        "type": "string"
+    },
+    "Card": {
+        "type": "dollar"
+    },
+    "Card Entry Methods": {
+        "type": "string"
+    },
+    "Cash": {
+        "type": "dollar"
+    },
+    "Square Gift Card": {
+        "type": "dollar"
+    },
+    "Other Tender": {
+        "type": "dollar"
+    },
+    "Other Tender Type": {
+        "type": "string"
+    },
+    "Tender Note": {
+        "type": "string"
+    },
+    "Fees": {
+        "type": "dollar"
+    },
+    "Net Total": {
+        "type": "dollar"
+    },
+    "Transaction ID": {
+        "type": "string"
+    },
+    "Payment ID": {
+        "type": "string"
+    },
     "Card Brand": {
         "type": "category",
         "categories": ["Visa", "MasterCard", "American Express", "Discover"],
         "ordered": false,
         "valid_values": ["Visa", "MasterCard", "American Express", "Discover"]
     },
-    "PAN Suffix": "string",
-    "Device Name": "string",
-    "Staff Name": "string",
-    "Staff ID": "string",
-    "Details": "string",
-    "Description": "string",
-    "Event Type": "string",
-    "Location": "string",
-    "Dining Option": "string",
-    "Customer ID": "string",
-    "Customer Name": "string",
-    "Customer Reference ID": "string",
-    "Device Nickname": "string",
-    "Third Party Fees": "dollar",
-    "Deposit ID": "string",
+    "PAN Suffix": {
+        "type": "string"
+    },
+    "Device Name": {
+        "type": "string"
+    },
+    "Staff Name": {
+        "type": "string"
+    },
+    "Staff ID": {
+        "type": "string"
+    },
+    "Details": {
+        "type": "string"
+    },
+    "Description": {
+        "type": "string"
+    },
+    "Event Type": {
+        "type": "string"
+    },
+    "Location": {
+        "type": "string"
+    },
+    "Dining Option": {
+        "type": "string"
+    },
+    "Customer ID": {
+        "type": "string"
+    },
+    "Customer Name": {
+        "type": "string"
+    },
+    "Customer Reference ID": {
+        "type": "string"
+    },
+    "Device Nickname": {
+        "type": "string"
+    },
+    "Third Party Fees": {
+        "type": "dollar"
+    },
+    "Deposit ID": {
+        "type": "string"
+    },
     "Deposit Date": {
         "type": "datetime",
         "format": "%Y-%m-%d"
     },
-    "Deposit Details": "string",
+    "Deposit Details": {
+        "type": "string"
+    },
     "Fee Percentage Rate": {
         "type": "float",
         "default_value": 0
@@ -64,12 +140,28 @@
         "type": "dollar",
         "default_value": 0
     },
-    "Refund Reason": "string",
-    "Discount Name": "string",
-    "Transaction Status": "string",
-    "Cash App": "dollar",
-    "Order Reference ID": "string",
-    "Fulfillment Note": "string",
-    "Free Processing Applied": "dollar",
-    "Unattributed Tips": "dollar"
+    "Refund Reason": {
+        "type": "string"
+    },
+    "Discount Name": {
+        "type": "string"
+    },
+    "Transaction Status": {
+        "type": "string"
+    },
+    "Cash App": {
+        "type": "dollar"
+    },
+    "Order Reference ID": {
+        "type": "string"
+    },
+    "Fulfillment Note": {
+        "type": "string"
+    },
+    "Free Processing Applied": {
+        "type": "dollar"
+    },
+    "Unattributed Tips": {
+        "type": "dollar"
+    }
 }

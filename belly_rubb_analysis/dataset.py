@@ -73,22 +73,35 @@ def load_data(file_path: str) -> pd.DataFrame:
         DataFrame: Loaded DataFrame"""
     return pd.read_csv(file_path)
 
-def convert_dollars(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
-    """Removes $ sign from dollar amounts
+def convert_dollars(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """Removes $ sign from dollar amounts and converts to numeric
     
     Params:
         df (pd.DataFrame): Original dataframe
-        col_types (dict): Dictionary mapping columns to datatypes
+        col (str): Dictionary mapping columns to datatypes
         
     Returns:
         df (pd.DataFrame): Processed dataframe
     """
-    # Loop through col types
-    for col, dtype in col_types.items():
-        # If column exists in df and is of type dollar
-        if col in df.columns and dtype == 'dollar':
-            # Remove $ sign
-            df[col] = df[col].replace('[\$,]', '', regex=True)
+    # Remove $ sign
+    df[col] = df[col].replace(r'[\$,]', '', regex=True)
+    df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    return df
+
+def convert_category(df: pd.DataFrame, col: str, categories: list, ordered: bool) -> pd.DataFrame:
+    """Converts column to category type
+    
+    Params:
+        df (pd.DataFrame): Original dataframe
+        col (str): Name of column to convert
+        categories (list): List of categories in column
+        ordered (bool): Whether categories are ordinal or not
+        
+    returns:
+        df (pd.DataFrame): Dataframe with converted column
+    """
+    df[col] = pd.Categorical(values=df[col], categories=categories, ordered=ordered)
 
     return df
 
@@ -108,29 +121,24 @@ def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
         # Verify column exists in df
         if col in df.columns:
             # String conversion
-            if dtype == 'string':
+            if dtype['type'] == 'string':
                 df[col] = df[col].astype('string')
-            # Datetime or category conversion
-            elif isinstance(dtype, dict):
-                # Datetime conversion
-                if dtype['type'] == 'datetime':
-                    df[col] = pd.to_datetime(df[col], errors='coerce', format=dtype['format'])
+            # Datetime conversion
+            elif dtype['type'] == 'datetime':
+                df[col] = pd.to_datetime(df[col], errors='coerce', format=dtype['format'])
 
-                    # Return only time if specified
-                    if dtype.get('only_time', False):
-                        df[col] = df[col].dt.time
-                # Category conversion
-                else:
-                    categories = dtype['categories']
-                    ordered = dtype['ordered']
-                    df[col] = pd.Categorical(values=df[col], categories=categories, ordered=ordered)
+                # Return only time if specified
+                if dtype.get('only_time', False):
+                    df[col] = df[col].dt.time
+            # Category conversion
+            elif dtype['type'] == 'category':
+                df = convert_category(df,
+                                      col=col,
+                                      categories=dtype['categories'],
+                                      ordered=dtype['ordered'])
             # Dollar conversion
-            elif dtype == 'dollar':
-                try:
-                    df[col] = df[col].replace('[\$,]', '', regex=True)
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
-                except ValueError:
-                    df = df.drop(labels=col, axis=1)
+            elif dtype['type'] == 'dollar':
+                df = convert_dollars(df, col)
             # Numeric conversion
             else:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -422,7 +430,6 @@ def main(
     # Convert columns to datatypes specified in json
     logger.info(f"Converting datatypes in {input_path.name}")
     df = convert_data_types(df, data_types)
-    print(df['Time'].head())
 
     # Drop columns with constant values
     logger.info(f"Dropping constant columns from {input_path.name}")

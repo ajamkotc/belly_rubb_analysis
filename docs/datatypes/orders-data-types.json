@@ -1,15 +1,29 @@
 {
-    "Order": "string",
+    "Order": {
+        "type": "string"
+    },
     "Order Date": {
         "type": "datetime",
         "format": "%Y/%m/%d"
     },
-    "Currency": "string",
-    "Order Subtotal": "float",
-    "Order Shipping Price": "float",
-    "Order Tax Total": "float",
-    "Order Total": "float",
-    "Order Refunded Amount": "float",
+    "Currency": {
+        "type": "string"
+    },
+    "Order Subtotal": {
+        "type": "float"
+    },
+    "Order Shipping Price": {
+        "type": "float"
+    },
+    "Order Tax Total": {
+        "type": "float"
+    },
+    "Order Total": {
+        "type": "float"
+    },
+    "Order Refunded Amount": {
+        "type": "float"
+    },
     "Fulfillment Date": {
         "type":  "datetime",
         "format": "%m/%d/%Y, %I:%M %p"
@@ -20,34 +34,67 @@
         "ordered": false,
         "valid_values": ["Pickup", "Curbside", "Delivery", "Other"]
     },
-    "Fulfillment Status": "string",
+    "Fulfillment Status": {
+        "type": "string"
+    },
     "Channels": {
         "type": "category",
         "categories": ["DoorDash", "BELLY RUBB | BBQ Catering | Barbecue To Go and Delivery", "Postmates Delivery", "Payment Links", "Belly Rubb"],
         "ordered": false,
         "valid_values": ["Postmates Delivery", "BELLY RUBB | BBQ Catering | Barbecue To Go and Delivery", "DoorDash", "Payment Links"]
     },
-    "Fulfillment Location": "string",
-    "Fulfillment Notes": "string",
-    "Recipient Name": "string",
-    "Recipient Email": "string",
-    "Recipient Phone": "string",
-    "Recipient Address": "string",
-    "Receipient Address 2": "string",
-    "Recipient Postal Code": "int",
-    "Recipient City": "string",
-    "Recipient Region": "string",
-    "Recipient Country": "string",
-    "Item Quantity": "int",
-    "Item Name": "string",
-    "Item SKU": "object",
-    "Item Variation": {
-        "type": "category",
-        "categories": ["Regular", "Side", "4 Bites", "Full", "Full Rack", "8 pcs", "Half rack", "6 pcs", "2 sliders", "6 sliders", "Half Pan", "3 pcs", "12 pcs", "9 pcs", "4 sliders", "2 Bites", "8 Bites", "6 Bites", "Full, Truffle salt", "Rosemary Pepper", "Full, Rosemary pepper", "Truffle Salt", "Side, Truffle salt", "Side, Rosemary pepper", "Crinkle Fries- Truffle Salt, Mac&Cheese"],
-        "ordered": false
+    "Fulfillment Location": {
+        "type": "string"
     },
-    "Item Modifiers": "string",
-    "Item Price": "float",
-    "Item Options Total Price": "float",
-    "Item Total Price": "float"
+    "Fulfillment Notes": {
+        "type": "string"
+    },
+    "Recipient Name": {
+        "type": "string"
+    },
+    "Recipient Email": {
+        "type": "string"
+    },
+    "Recipient Phone": {
+        "type": "string"
+    },
+    "Recipient Address": {
+        "type": "string"
+    },
+    "Receipient Address 2": {
+        "type": "string"
+    },
+    "Recipient Postal Code": {
+        "type": "int"
+    },
+    "Recipient City": {
+        "type": "string"
+    },
+    "Recipient Region": {
+        "type": "string"
+    },
+    "Recipient Country": {
+        "type": "string"
+    },
+    "Item Quantity": {
+        "type": "int"
+    },
+    "Item Name": {
+        "type": "string"
+    },
+    "Item SKU": {
+        "type": "object"
+    },
+    "Item Modifiers": {
+        "type": "string"
+    },
+    "Item Price": {
+        "type": "float"
+    },
+    "Item Options Total Price": {
+        "type": "float"
+    },
+    "Item Total Price": {
+        "type": "float"
+    }
 }
