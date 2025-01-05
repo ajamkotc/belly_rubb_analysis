@@ -101,6 +101,9 @@ def convert_category(df: pd.DataFrame, col: str, categories: list, ordered: bool
     returns:
         df (pd.DataFrame): Dataframe with converted column
     """
+    if categories == None:
+        categories = df[col].unique()
+
     df[col] = pd.Categorical(values=df[col], categories=categories, ordered=ordered)
 
     return df
@@ -134,7 +137,7 @@ def convert_data_types(df: pd.DataFrame, col_types: dict) -> pd.DataFrame:
             elif dtype['type'] == 'category':
                 df = convert_category(df,
                                       col=col,
-                                      categories=dtype['categories'],
+                                      categories=dtype.get('categories'),
                                       ordered=dtype['ordered'])
             # Dollar conversion
             elif dtype['type'] == 'dollar':
@@ -220,7 +223,7 @@ def validate_cols(df: pd.DataFrame, col_data: dict) -> pd.DataFrame:
         # Validate that column exists in df
         if col in df.columns:
             # Col has list of valid values
-            if isinstance(dtype, dict) and ('valid_values' in dtype):
+            if 'valid_values' in dtype:
                 # Correct values in column
                 validated_df = autocorrect_col_values(
                     df=validated_df,
@@ -379,6 +382,28 @@ def detect_date_col(df: pd.DataFrame, date_keywords=None) -> str:
             if keyword.lower() == col.lower():
                 return col
 
+def fill_missing(df: pd.DataFrame, col_data: dict) -> pd.DataFrame:
+    """Fill missing values in dataframe
+    
+    Params:
+        df (pd.DataFrame): Original dataframe
+        col_data (dict): Dictionary mapping column names to data
+        
+    Returns:
+        df (pd.DataFrame): Processed dataframe
+    """
+    # breakpoint()
+    # Iterate through column data
+    for col, data in col_data.items():
+        # Verify column exists in df
+        if col in df.columns:
+            # Check if default fill value exists for column
+            if data.get('default_value'):
+                # Fill missing values
+                df[col] = df[col].fillna(value = data['default_value'])
+    
+    return df
+
 @app.command()
 def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
@@ -393,7 +418,6 @@ def main(
         output_path (str): Path to export processed data
         datatype_path (str): Path to JSON containing datatypes
     """
-    breakpoint()
     # Get table name
     table_name = input_path.stem
     logger.info(f"Loaded table {table_name}")
@@ -427,6 +451,10 @@ def main(
     logger.info(f"Loading datatypes from {json_file.name}")
     data_types = load_col_types(json_file)
 
+    # Fill missing values
+    logger.info(f"Filling missing values in {input_path.name} from {json_file.name}")
+    df = fill_missing(df=df, col_data=data_types)
+
     # Convert columns to datatypes specified in json
     logger.info(f"Converting datatypes in {input_path.name}")
     df = convert_data_types(df, data_types)
@@ -448,6 +476,7 @@ def main(
     df = validate_cols(df=df, col_data=data_types)
 
     # Save data
+    # output_filename = INTERIM_DATA_DIR / 'test.csv'
     output_filename = INTERIM_DATA_DIR / (input_path.stem + '_interim.csv')
     logger.info(f"Outputting processed file to {output_filename}")
     df.to_csv(output_filename, index=False)

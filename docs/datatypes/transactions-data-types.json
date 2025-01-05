@@ -134,17 +134,19 @@
     },
     "Fee Percentage Rate": {
         "type": "float",
-        "default_value": 0
+        "default_value": "0.00"
     },
     "Fee Fixed Rate": {
         "type": "dollar",
-        "default_value": 0
+        "default_value": "$0.00"
     },
     "Refund Reason": {
         "type": "string"
     },
     "Discount Name": {
-        "type": "string"
+        "type": "category",
+        "ordered": false,
+        "default_value": "None"
     },
     "Transaction Status": {
         "type": "string"
